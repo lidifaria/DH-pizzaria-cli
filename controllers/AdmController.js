@@ -16,31 +16,43 @@ const AdmController = {
         ingredientes = await Ingredientes.findAll();
         res.render('form-add-pizza.ejs', {ingredientes});
     },
-    gravarPizza: (req, res) => {
+    gravarPizza: async (req, res) => {
+        
         let novoNome = req.body.nome.replace(' ', '-').toLowerCase() + '.jpg';
-        // let novoNome = `${Date.now()}-${req.file.originalname}`
         fs.renameSync(req.file.path, `public/img/${novoNome}`)
 
         let pizza = {
             nome: req.body.nome,
-            ingredientes: req.body.ingredientes.split(',').map(e => e.trim()),
+            ingredientes: req.body.ingredientes,
             preco: Number(req.body.preco),
             img: `/img/${novoNome}`,
             destaque: false,
             score: 0
         }
 
-        PizzasServices.adicionarPizza(pizza);
+        await PizzasServices.adicionarPizza(pizza);
 
         res.redirect('/adm/pizzas');
     },
-    showEditPizza: (req, res) => {
+    showEditPizza: async (req, res) => {
+        
         // Capiturar o id da pizza a ser editada (req.params)
+        const idDaPizza = req.params.id;
 
         // Encontrar a pizza a ser editada guardando na variavel pizza (PizzasServices.carregarPizza)
+        const pizza = await PizzasServices.carregarPizza(idDaPizza);
+
+        // Transformando o array de ingredientes da pizza(objetos) em array de ids;
+        pizza.ingredientes = pizza.ingredientes.map(i => i.id);
+
+        // Carregar os ingredientes
+        const ingredientes = await PizzasServices.carregarIngredientes();
+
+
 
         // Renderizar a view (ainda inexistente) form-edit-pizza.ejs
         // passando para essa view (res.render(____, {pizza}))
+        res.render('form-edit-pizza.ejs', {pizza, ingredientes});
     },
     showLogin: (req, res) => {
         res.render('login.ejs');
@@ -72,15 +84,32 @@ const AdmController = {
         res.redirect('/adm/pizzas');
 
     },
-    delete: (req, res) => {
+    delete: async (req, res) => {
         // capturar o id da pizza
         const id = req.params.id;
 
         // deletar a pizza pelo id
-        PizzasServices.removerPizza(id);
+        await PizzasServices.removerPizza(id);
         
         // redirecionar para /adm/pizzas (informando que deletou com sucesso)
         res.redirect('/adm/pizzas?msg=pizzaApagada');
+    },
+    atualizarPizza: async (req, res) => {
+
+        const idDaPizza = req.params.id;
+        let novoNome = req.body.nome.replace(' ', '-').toLowerCase() + '.jpg';
+        fs.renameSync(req.file.path, `public/img/${novoNome}`)
+        
+        const dados = {
+            nome: req.body.nome,
+            preco: req.body.preco,
+            ingredientes: req.body.ingredientes,
+            img: `/img/${novoNome}`,
+        }
+
+        await PizzasServices.alterarPizza(idDaPizza, dados);
+
+        res.redirect('/adm/pizzas');
     }
 
 }
